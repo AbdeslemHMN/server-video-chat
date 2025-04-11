@@ -1,19 +1,28 @@
-import express from "express";
-import dotenv from "dotenv";
+import { io , server } from "./app.js";
 
-const app = express();
-dotenv.config();
+const PORT = process.env.PORT || 5000;
 
-const PORT = process.env.PORT || 5001;
+io.on("connection", (socket) => {
+  socket.emit('me', socket.id);
+  console.log('a user connected', socket.id);
 
-//middleware
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({limit : "50mb" , extended: true }));
+  socket.on('disconnect', () => {
+    socket.broadcast.emit('user-disconnected', socket.id);
+    console.log('user disconnected', socket.id);
+  });
+
+  socket.on('callUser', ({ userToCall, signalData, from, name }) => {
+    io.to(userToCall).emit('callUser', { signal: signalData, from, name })
+    console.log('callUser', { signal: signalData, from, name });
+  });
+
+  socket.on('answerCall', (data) => {
+    io.to(data.to).emit('callAccepted', data.signal)
+    console.log('answerCall', data);
+  });
+});
 
 
-
-
-
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
